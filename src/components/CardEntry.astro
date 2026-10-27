@@ -1,6 +1,7 @@
 ---
 // 账本条目：一排玩法。data-* 供玩法库页的客户端筛选使用。
 import type { CollectionEntry } from 'astro:content';
+import { withBase } from '../config';
 
 interface Props {
   card: CollectionEntry<'cards'>;
@@ -15,7 +16,7 @@ const haystack = [c.title, c.summary, c.industry, ...c.tags, ...c.tools, ...c.au
 ---
 <a
   class="entry"
-  href={`/cards/${card.id}/`}
+  href={withBase(`/cards/${card.id}/`)}
   data-industry={c.industry}
   data-cost={c.cost}
   data-difficulty={c.difficulty}

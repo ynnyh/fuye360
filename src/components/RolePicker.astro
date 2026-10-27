@@ -1,6 +1,7 @@
 ---
 // 角色选择器：选中的角色存 localStorage，玩法库页会读取并默认替你筛。
 import { roles } from '../data/roles';
+import { withBase } from '../config';
 
 interface Props {
   showGo?: boolean; // 是否显示「带着角色去玩法库」按钮
@@ -18,7 +19,7 @@ const { showGo = false } = Astro.props;
   <p class="role-say" id="role-say" aria-live="polite"></p>
   {showGo && (
     <p class="role-go" hidden id="role-go">
-      <a class="btn btn--ghost" href="/cards/">按我的角色看玩法 →</a>
+      <a class="btn btn--ghost" href={withBase('/cards/')}>按我的角色看玩法 →</a>
     </p>
   )}
 </div>

@@ -3,6 +3,7 @@ import Base from '../../layouts/Base.astro';
 import CardEntry from '../../components/CardEntry.astro';
 import { industries } from '../../data/industries';
 import { roles } from '../../data/roles';
+import { withBase } from '../../config';
 import { getCollection } from 'astro:content';
 
 const cards = (await getCollection('cards')).sort(
@@ -72,7 +73,7 @@ const total = cards.length;
       </div>
       <div class="empty" id="lib-empty" hidden>
         <span class="kai">这个组合下还没攒出玩法</span>
-        换个筛法试试；或者你正好懂这行——<a href="/submit/">把路子投进来</a>。
+        换个筛法试试；或者你正好懂这行——<a href={withBase('/submit/')}>把路子投进来</a>。
       </div>
     </div>
   </section>

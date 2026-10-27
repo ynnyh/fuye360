@@ -14,3 +14,8 @@ export const SITE = {
   // 可选：评论区（giscus，基于 GitHub Discussions）。留空则不渲染评论区。
   giscus: { repo: '', repoId: '', category: '', categoryId: '' },
 };
+
+// 内链统一拼 base 前缀（GitHub Pages 项目站挂在 /fuye360/ 子路径下）。
+// 用法：withBase('/cards/') → '/fuye360/cards/'
+export const withBase = (path: string) =>
+  `${import.meta.env.BASE_URL.replace(/\/$/, '')}${path}`;

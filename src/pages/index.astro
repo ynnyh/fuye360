@@ -4,7 +4,7 @@ import Seal from '../components/Seal.astro';
 import RolePicker from '../components/RolePicker.astro';
 import CardEntry from '../components/CardEntry.astro';
 import { industries } from '../data/industries';
-import { SITE } from '../config';
+import { SITE, withBase } from '../config';
 import { getCollection } from 'astro:content';
 
 const cards = (await getCollection('cards')).sort(
@@ -46,14 +46,14 @@ const featured = cards.filter((c) => c.data.featured);
   </section>
 
   <section class="wall" aria-label="行当墙">
-    <div class="sec-head"><h2>行当墙</h2><a class="sec-more" href="/cards/">看全部玩法</a></div>
+    <div class="sec-head"><h2>行当墙</h2><a class="sec-more" href={withBase('/cards/')}>看全部玩法</a></div>
     <div class="wall-grid">
       {industries.map((ind) => {
         const n = counts[ind.name] ?? 0;
         return (
           <a
             class:list={['plaque', { 'plaque--empty': n === 0 }]}
-            href={n > 0 ? `/cards/?industry=${encodeURIComponent(ind.name)}` : '/cards/'}
+            href={n > 0 ? withBase(`/cards/?industry=${encodeURIComponent(ind.name)}`) : withBase('/cards/')}
             title={`${ind.name}——${ind.note}`}
           >
             <span class="p-name">{ind.name}</span>
@@ -64,13 +64,13 @@ const featured = cards.filter((c) => c.data.featured);
       })}
     </div>
     <p class="wall-note">
-      360 行是愿景，现在是{Object.values(counts).reduce((a, b) => a + b, 0)} 张卡、{Object.keys(counts).length} 个行当。你那行还没有？<a href="/submit/">投一张</a>。
+      360 行是愿景，现在是{Object.values(counts).reduce((a, b) => a + b, 0)} 张卡、{Object.keys(counts).length} 个行当。你那行还没有？<a href={withBase('/submit/')}>投一张</a>。
     </p>
   </section>
 
   {featured.length > 0 && (
     <section aria-label="精选玩法">
-      <div class="sec-head"><h2>本周拆好的几招</h2><a class="sec-more" href="/cards/">进玩法库 →</a></div>
+      <div class="sec-head"><h2>本周拆好的几招</h2><a class="sec-more" href={withBase('/cards/')}>进玩法库 →</a></div>
       <div class="ledger">
         {featured.slice(0, 5).map((c, i) => <CardEntry card={c} no={i + 1} />)}
       </div>

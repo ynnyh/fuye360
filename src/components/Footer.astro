@@ -1,5 +1,5 @@
 ---
-import { SITE } from '../config';
+import { SITE, withBase } from '../config';
 const year = new Date().getFullYear();
 ---
 <footer class="site-footer">
@@ -14,7 +14,7 @@ const year = new Date().getFullYear();
     <div>
       {SITE.github ? <a href={SITE.github}>GitHub 仓库</a> : <span>GitHub 仓库（待配置）</span>}
       <span> · </span>
-      <a href="/submit/">投稿玩法</a>
+      <a href={withBase('/submit/')}>投稿玩法</a>
       <p style="margin:6px 0 0;">© {year} {SITE.name}</p>
     </div>
   </div>

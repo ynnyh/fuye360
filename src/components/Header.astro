@@ -1,11 +1,14 @@
 ---
 import Seal from './Seal.astro';
-import { SITE } from '../config';
+import { SITE, withBase } from '../config';
 
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
 const path = Astro.url.pathname;
+// 当前页高亮：把 base 前缀剥掉再比较
 const current = (href: string) => {
-  if (href === '/') return path === '/' || path === '';
-  return path.startsWith(href);
+  const p = path.startsWith(base) ? path.slice(base.length) || '/' : path;
+  if (href === '/') return p === '/';
+  return p.startsWith(href);
 };
 const nav = [
   { href: '/cards/', label: '玩法库' },
@@ -15,13 +18,13 @@ const nav = [
 ---
 <header class="site-header">
   <div class="wrap bar">
-    <a href="/" class="brand" aria-label="副业360 首页">
+    <a href={withBase('/')} class="brand" aria-label="副业360 首页">
       <Seal small />
       <span class="brand-name">{SITE.name}</span>
     </a>
     <nav class="site-nav" aria-label="主导航">
       {nav.map((n) => (
-        <a href={n.href} aria-current={current(n.href) ? 'true' : undefined}>{n.label}</a>
+        <a href={withBase(n.href)} aria-current={current(n.href) ? 'true' : undefined}>{n.label}</a>
       ))}
     </nav>
   </div>

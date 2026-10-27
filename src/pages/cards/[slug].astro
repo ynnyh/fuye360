@@ -1,6 +1,6 @@
 ---
 import Base from '../../layouts/Base.astro';
-import { SITE } from '../../config';
+import { SITE, withBase } from '../../config';
 import { getCollection, render } from 'astro:content';
 
 export async function getStaticPaths() {
@@ -18,7 +18,7 @@ const giscusReady = SITE.giscus.repo && SITE.giscus.repoId && SITE.giscus.catego
 <Base title={c.title} description={c.summary} keywords={[c.industry, ...c.tags, ...c.tools]}>
   <article>
     <header class="card-head">
-      <a class="crumb" href="/cards/">← 回玩法库</a>
+      <a class="crumb" href={withBase('/cards/')}>← 回玩法库</a>
       <h1 class="card-title">{c.title}</h1>
       <p class="card-byline">{c.author} · {date} 收录</p>
     </header>

@@ -1,6 +1,6 @@
 ---
 import Base from '../layouts/Base.astro';
-import { SITE } from '../config';
+import { SITE, withBase } from '../config';
 ---
 
 <Base title="关于本站" description="副业360 是一个 AI 副业玩法库：360行，行行用AI。人人可投稿，人人可取用。">
@@ -21,7 +21,7 @@ import { SITE } from '../config';
     <ul>
       <li><strong>找</strong>：按你的角色（上班族、宝妈、学生……）或行当筛选，玩法库里挑对路的。</li>
       <li><strong>抄</strong>：每张卡带可直接复制的 Prompt 模板，照着 SOP 开工。</li>
-      <li><strong>投</strong>：你懂哪行，就拆哪行，<a href="/submit/">投稿</a>署名收录。</li>
+      <li><strong>投</strong>：你懂哪行，就拆哪行，<a href={withBase('/submit/')}>投稿</a>署名收录。</li>
     </ul>
 
     <h2>几条规矩</h2>
