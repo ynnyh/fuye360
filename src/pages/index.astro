@@ -1,0 +1,79 @@
+---
+import Base from '../layouts/Base.astro';
+import Seal from '../components/Seal.astro';
+import RolePicker from '../components/RolePicker.astro';
+import CardEntry from '../components/CardEntry.astro';
+import { industries } from '../data/industries';
+import { SITE } from '../config';
+import { getCollection } from 'astro:content';
+
+const cards = (await getCollection('cards')).sort(
+  (a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf(),
+);
+
+const counts: Record<string, number> = {};
+for (const c of cards) counts[c.data.industry] = (counts[c.data.industry] ?? 0) + 1;
+
+const featured = cards.filter((c) => c.data.featured);
+---
+
+<Base>
+  <script type="application/ld+json" set:html={JSON.stringify({
+    '@context': 'https://schema.org',
+    '@type': 'WebSite',
+    name: SITE.name,
+    alternateName: 'AI副业项目库',
+    description: SITE.description,
+    inLanguage: 'zh-CN',
+  })} />
+
+  <section class="hero">
+    <div class="hero-grid">
+      <div>
+        <h1 class="hero-slogan">360行，<br />行行用AI</h1>
+        <p class="hero-sub">
+          这里不聊风口，只攒「玩法卡」：每个行当怎么用 AI 接活儿、赚多少、第一步干什么，一张卡拆明白。挑个你的行当，照着开工。
+        </p>
+      </div>
+      <div class="hero-stamp" aria-hidden="true"><Seal /></div>
+    </div>
+  </section>
+
+  <section class="role-block" aria-label="选择你的角色">
+    <h2 class="role-title">你是哪一行？</h2>
+    <p class="role-hint">选一个身份，玩法库会替你把对路的玩法挑到前头。随时可换。</p>
+    <RolePicker showGo />
+  </section>
+
+  <section class="wall" aria-label="行当墙">
+    <div class="sec-head"><h2>行当墙</h2><a class="sec-more" href="/cards/">看全部玩法</a></div>
+    <div class="wall-grid">
+      {industries.map((ind) => {
+        const n = counts[ind.name] ?? 0;
+        return (
+          <a
+            class:list={['plaque', { 'plaque--empty': n === 0 }]}
+            href={n > 0 ? `/cards/?industry=${encodeURIComponent(ind.name)}` : '/cards/'}
+            title={`${ind.name}——${ind.note}`}
+          >
+            <span class="p-name">{ind.name}</span>
+            <span class="p-emoji" aria-hidden="true">{ind.emoji}</span>
+            <span class="p-count">{n > 0 ? `${n} 张` : '征稿中'}</span>
+          </a>
+        );
+      })}
+    </div>
+    <p class="wall-note">
+      360 行是愿景，现在是{Object.values(counts).reduce((a, b) => a + b, 0)} 张卡、{Object.keys(counts).length} 个行当。你那行还没有？<a href="/submit/">投一张</a>。
+    </p>
+  </section>
+
+  {featured.length > 0 && (
+    <section aria-label="精选玩法">
+      <div class="sec-head"><h2>本周拆好的几招</h2><a class="sec-more" href="/cards/">进玩法库 →</a></div>
+      <div class="ledger">
+        {featured.slice(0, 5).map((c, i) => <CardEntry card={c} no={i + 1} />)}
+      </div>
+    </section>
+  )}
+</Base>

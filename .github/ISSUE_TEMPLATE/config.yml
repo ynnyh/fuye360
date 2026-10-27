@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 站点问题与建议
+    url: https://github.com/ynnyh/fuye360/issues/new?template=new-card.yml
+    about: 投稿玩法卡请使用上面的表单；其他问题欢迎开普通 Issue。

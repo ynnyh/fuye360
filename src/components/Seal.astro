@@ -1,0 +1,11 @@
+---
+// 印章：全站的记忆点。size 控制整体字号缩放。
+interface Props {
+  small?: boolean;
+}
+const { small = false } = Astro.props;
+---
+<span class:list={['seal', { 'seal--sm': small }]}>
+  <span class="seal-big">副业</span>
+  <span class="seal-num">360</span>
+</span>

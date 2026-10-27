@@ -1,0 +1,28 @@
+---
+import Seal from './Seal.astro';
+import { SITE } from '../config';
+
+const path = Astro.url.pathname;
+const current = (href: string) => {
+  if (href === '/') return path === '/' || path === '';
+  return path.startsWith(href);
+};
+const nav = [
+  { href: '/cards/', label: '玩法库' },
+  { href: '/submit/', label: '我要投稿' },
+  { href: '/about/', label: '关于' },
+];
+---
+<header class="site-header">
+  <div class="wrap bar">
+    <a href="/" class="brand" aria-label="副业360 首页">
+      <Seal small />
+      <span class="brand-name">{SITE.name}</span>
+    </a>
+    <nav class="site-nav" aria-label="主导航">
+      {nav.map((n) => (
+        <a href={n.href} aria-current={current(n.href) ? 'true' : undefined}>{n.label}</a>
+      ))}
+    </nav>
+  </div>
+</header>

@@ -1,0 +1,36 @@
+---
+// 账本条目：一排玩法。data-* 供玩法库页的客户端筛选使用。
+import type { CollectionEntry } from 'astro:content';
+
+interface Props {
+  card: CollectionEntry<'cards'>;
+  no: number;
+}
+const { card, no } = Astro.props;
+const c = card.data;
+const noLabel = String(no).padStart(3, '0');
+const haystack = [c.title, c.summary, c.industry, ...c.tags, ...c.tools, ...c.audience]
+  .join(' ')
+  .toLowerCase();
+---
+<a
+  class="entry"
+  href={`/cards/${card.id}/`}
+  data-industry={c.industry}
+  data-cost={c.cost}
+  data-difficulty={c.difficulty}
+  data-faceless={c.faceless ? '1' : '0'}
+  data-audience={c.audience.join('|')}
+  data-search={haystack}
+>
+  <span class="entry-no" aria-hidden="true">{noLabel}</span>
+  <h3 class="entry-title">{c.title}</h3>
+  <p class="entry-summary">{c.summary}</p>
+  <div class="meta-chips">
+    <span class="chip">{c.industry}</span>
+    <span class="chip chip--pine">成本{c.cost} · {c.difficulty}</span>
+    <span class="chip chip--money">{c.income}</span>
+    {c.faceless && <span class="chip chip--faceless">无需露脸</span>}
+    {c.audience.slice(0, 3).map((a) => <span class="chip">{a}</span>)}
+  </div>
+</a>

@@ -1,0 +1,134 @@
+name: 投稿玩法卡
+description: 把你的 AI 副业路子拆成一张玩法卡，审核通过后收录进玩法库并署你的名。
+title: '[投稿] '
+labels: [投稿]
+body:
+  - type: input
+    id: title
+    attributes:
+      label: 玩法标题
+      description: 一句话说清「给谁 + 干什么」，如：给宠物店代运营朋友圈
+    validations:
+      required: true
+  - type: textarea
+    id: summary
+    attributes:
+      label: 一句话简介
+      description: 50 字以内，列表页会展示这句话。
+      placeholder: 小宠物店老板没时间发朋友圈。你用 AI 批量产出内容，按月收订阅费。
+    validations:
+      required: true
+  - type: dropdown
+    id: industry
+    attributes:
+      label: 行当
+      options:
+        - 餐饮
+        - 宠物
+        - 电商
+        - 教育辅导
+        - 自媒体
+        - 设计创意
+        - 摄影影像
+        - 文字翻译
+        - 本地生活
+        - 二手闲置
+        - 职场服务
+        - 跨境出海
+    validations:
+      required: true
+  - type: checkboxes
+    id: audience
+    attributes:
+      label: 适合人群（可多选）
+      options:
+        - { label: 上班族 }
+        - { label: 宝妈宝爸 }
+        - { label: 学生党 }
+        - { label: 程序员 }
+        - { label: 设计师 }
+        - { label: 小店主 }
+        - { label: 自由职业 }
+        - { label: 银发族 }
+  - type: input
+    id: tools
+    attributes:
+      label: AI 工具链
+      description: 逗号分隔，如：豆包, 即梦, 微信
+    validations:
+      required: true
+  - type: dropdown
+    id: cost
+    attributes:
+      label: 启动成本
+      options: [低, 中, 高]
+    validations:
+      required: true
+  - type: dropdown
+    id: difficulty
+    attributes:
+      label: 上手难度
+      options: [入门, 进阶, 专业]
+    validations:
+      required: true
+  - type: input
+    id: time
+    attributes:
+      label: 时间投入
+      placeholder: 每天1-2小时
+    validations:
+      required: true
+  - type: input
+    id: income
+    attributes:
+      label: 收益预估
+      description: 写清口径和「预估」，如：单店 300-800 元/月（预估）
+    validations:
+      required: true
+  - type: dropdown
+    id: faceless
+    attributes:
+      label: 是否无需露脸
+      options: ['是', '否']
+    validations:
+      required: true
+  - type: input
+    id: tags
+    attributes:
+      label: 标签
+      description: 逗号分隔，2-4 个，如：内容代运营, 本地商家
+  - type: input
+    id: author
+    attributes:
+      label: 署名
+      description: 想在卡片上显示的名字，留空则显示你的 GitHub 用户名。
+  - type: textarea
+    id: value
+    attributes:
+      label: 谁会为此付钱 + 一句话价值主张
+    validations:
+      required: true
+  - type: textarea
+    id: sop
+    attributes:
+      label: 开工步骤（SOP）
+      description: 5 步左右，每步说清动作，要能照着做。
+    validations:
+      required: true
+  - type: textarea
+    id: channels
+    attributes:
+      label: 获客与定价
+    validations:
+      required: true
+  - type: textarea
+    id: risks
+    attributes:
+      label: 风险与坑
+    validations:
+      required: true
+  - type: textarea
+    id: prompt
+    attributes:
+      label: Prompt 模板（可选但强烈建议）
+      description: 访客可以直接复制试用的提示词。

@@ -1,0 +1,21 @@
+---
+import { SITE } from '../config';
+const year = new Date().getFullYear();
+---
+<footer class="site-footer">
+  <div class="wrap cols">
+    <div>
+      <span class="kai" style="font-size:1.1rem;">{SITE.name}</span>
+      <span> · {SITE.slogan}</span>
+      <p style="margin:6px 0 0;">
+        站内所有收益均为预估，不构成任何承诺。投稿内容经审核后发布。
+      </p>
+    </div>
+    <div>
+      {SITE.github ? <a href={SITE.github}>GitHub 仓库</a> : <span>GitHub 仓库（待配置）</span>}
+      <span> · </span>
+      <a href="/submit/">投稿玩法</a>
+      <p style="margin:6px 0 0;">© {year} {SITE.name}</p>
+    </div>
+  </div>
+</footer>

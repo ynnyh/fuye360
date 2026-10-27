@@ -1,0 +1,106 @@
+---
+import Base from '../../layouts/Base.astro';
+import { SITE } from '../../config';
+import { getCollection, render } from 'astro:content';
+
+export async function getStaticPaths() {
+  const cards = await getCollection('cards');
+  return cards.map((card) => ({ params: { slug: card.id }, props: { card } }));
+}
+
+const { card } = Astro.props;
+const { Content } = await render(card);
+const c = card.data;
+const date = c.pubDate.toLocaleDateString('zh-CN', { year: 'numeric', month: 'long', day: 'numeric' });
+const giscusReady = SITE.giscus.repo && SITE.giscus.repoId && SITE.giscus.categoryId;
+---
+
+<Base title={c.title} description={c.summary} keywords={[c.industry, ...c.tags, ...c.tools]}>
+  <article>
+    <header class="card-head">
+      <a class="crumb" href="/cards/">← 回玩法库</a>
+      <h1 class="card-title">{c.title}</h1>
+      <p class="card-byline">{c.author} · {date} 收录</p>
+    </header>
+
+    <div class="detail-layout">
+      <div class="prose">
+        <Content />
+      </div>
+
+      <aside class="ledger-meta" aria-label="玩法档案">
+        <h2>玩法档案</h2>
+        <dl>
+          <div class="row"><dt>行当</dt><dd>{c.industry}</dd></div>
+          <div class="row"><dt>适合</dt><dd>{c.audience.join('、') || '不限'}</dd></div>
+          <div class="row"><dt>启动成本</dt><dd>{c.cost}</dd></div>
+          <div class="row"><dt>上手难度</dt><dd>{c.difficulty}</dd></div>
+          <div class="row"><dt>时间投入</dt><dd>{c.time}</dd></div>
+          <div class="row"><dt>收益预估</dt><dd class="money">{c.income}</dd></div>
+          <div class="row"><dt>是否露脸</dt><dd>{c.faceless ? '不用露脸' : '需要出镜'}</dd></div>
+        </dl>
+        <div class="meta-chips" style="margin-top:12px;">
+          {c.tools.map((t) => <span class="chip">{t}</span>)}
+          {c.tags.map((t) => <span class="chip chip--pine"># {t}</span>)}
+        </div>
+        <p style="margin:14px 0 0;font-size:.85rem;color:var(--ink-soft);">
+          收益为估算，随地区、客源、投入变化。开工前先小成本试一周。
+        </p>
+      </aside>
+    </div>
+  </article>
+
+  {giscusReady && (
+    <section class="sec-head" style="margin-top:48px;"><h2>聊聊这张卡</h2></section>
+  )}
+  {giscusReady && (
+    <script
+      is:inline
+      src="https://giscus.app/client.js"
+      data-repo={SITE.giscus.repo}
+      data-repo-id={SITE.giscus.repoId}
+      data-category={SITE.giscus.category}
+      data-category-id={SITE.giscus.categoryId}
+      data-mapping="pathname"
+      data-strict="0"
+      data-reactions-enabled="1"
+      data-emit-metadata="0"
+      data-input-position="top"
+      data-theme="light"
+      data-lang="zh-CN"
+      data-loading="lazy"
+      crossorigin="anonymous"
+      async
+    ></script>
+  )}
+</Base>
+
+<script>
+  // 给正文里的 Prompt 代码块加「复制」按钮
+  document.querySelectorAll('.prose pre').forEach((pre) => {
+    const btn = document.createElement('button');
+    btn.className = 'copy-btn';
+    btn.type = 'button';
+    btn.textContent = '复制';
+    btn.addEventListener('click', async () => {
+      const text = (pre.querySelector('code') ?? pre).textContent ?? '';
+      try {
+        await navigator.clipboard.writeText(text);
+      } catch {
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        ta.remove();
+      }
+      btn.textContent = '已复制 ✓';
+      btn.disabled = true;
+      setTimeout(() => {
+        btn.textContent = '复制';
+        btn.disabled = false;
+      }, 1600);
+    });
+    pre.appendChild(btn);
+  });
+</script>

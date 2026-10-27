@@ -1,0 +1,15 @@
+{
+  "name": "fuye360",
+  "version": "0.1.0",
+  "description": "副业360 — 360行，行行用AI。AI副业玩法库",
+  "type": "module",
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview"
+  },
+  "dependencies": {
+    "@astrojs/sitemap": "^3.2.1",
+    "astro": "^5.7.0"
+  }
+}

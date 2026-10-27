@@ -1,0 +1,70 @@
+---
+// 角色选择器：选中的角色存 localStorage，玩法库页会读取并默认替你筛。
+import { roles } from '../data/roles';
+
+interface Props {
+  showGo?: boolean; // 是否显示「带着角色去玩法库」按钮
+}
+const { showGo = false } = Astro.props;
+---
+<div id="role-picker" data-show-go={showGo ? '1' : '0'}>
+  <div class="role-chips" role="group" aria-label="选择你的角色">
+    {roles.map((r) => (
+      <button type="button" class="role-chip" data-role={r.name} aria-pressed="false">
+        {r.emoji} {r.name}
+      </button>
+    ))}
+  </div>
+  <p class="role-say" id="role-say" aria-live="polite"></p>
+  {showGo && (
+    <p class="role-go" hidden id="role-go">
+      <a class="btn btn--ghost" href="/cards/">按我的角色看玩法 →</a>
+    </p>
+  )}
+</div>
+
+<script>
+  const blurb: Record<string, string> = {
+    '上班族': '下班后两小时，够开一张新摊子',
+    '宝妈宝爸': '碎片时间接活儿，家里蹲也能跑',
+    '学生党': '本钱少不怕，先攒作品和口碑',
+    '程序员': '别人用工具，你搭流水线',
+    '设计师': '审美是你的护城河，AI是你的学徒',
+    '小店主': '店是现成的流量口，加点AI多一条腿',
+    '自由职业': '单子要多线程，玩法卡就是你的项目库',
+    '银发族': '手艺和闲工夫，都是年轻人缺的',
+  };
+  const KEY = 'fuye360.role';
+  const root = document.getElementById('role-picker')!;
+  const say = document.getElementById('role-say')!;
+  const go = document.getElementById('role-go');
+
+  function apply(name: string | null) {
+    root.querySelectorAll<HTMLButtonElement>('.role-chip').forEach((b) => {
+      b.setAttribute('aria-pressed', String(b.dataset.role === name));
+    });
+    if (name) {
+      say.textContent = blurb[name] ?? '';
+      if (go) go.hidden = false;
+    } else {
+      say.textContent = '';
+      if (go) go.hidden = true;
+    }
+  }
+
+  root.addEventListener('click', (e) => {
+    const btn = (e.target as HTMLElement).closest<HTMLButtonElement>('.role-chip');
+    if (!btn) return;
+    const name = btn.dataset.role!;
+    const current = localStorage.getItem(KEY);
+    if (current === name) {
+      localStorage.removeItem(KEY);
+      apply(null);
+    } else {
+      localStorage.setItem(KEY, name);
+      apply(name);
+    }
+  });
+
+  apply(localStorage.getItem(KEY));
+</script>

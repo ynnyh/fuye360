@@ -1,0 +1,173 @@
+---
+import Base from '../../layouts/Base.astro';
+import CardEntry from '../../components/CardEntry.astro';
+import { industries } from '../../data/industries';
+import { roles } from '../../data/roles';
+import { getCollection } from 'astro:content';
+
+const cards = (await getCollection('cards')).sort(
+  (a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf(),
+);
+const total = cards.length;
+---
+
+<Base title="玩法库" description="按行当、成本、难度、是否露脸筛选 AI 副业玩法，也能按你的身份推荐。">
+  <section class="lib-head">
+    <div class="sec-head">
+      <h2 class="sec-title">玩法库</h2>
+      <span>共 {total} 张玩法卡，持续拆新</span>
+    </div>
+  </section>
+
+  <section class="lib-layout" aria-label="玩法筛选与列表">
+    <aside class="filters">
+      <div>
+        <h3>搜一搜</h3>
+        <input id="f-search" class="lib-search" type="search" placeholder="如：宠物、短视频、简历…" />
+      </div>
+      <div>
+        <h3>行当</h3>
+        <select id="f-industry">
+          <option value="">全部行当</option>
+          {industries.map((i) => <option value={i.name}>{i.emoji} {i.name}</option>)}
+        </select>
+      </div>
+      <div>
+        <h3>启动成本</h3>
+        <div class="f-chips" id="f-cost">
+          {['低', '中', '高'].map((v) => (
+            <button type="button" class="f-chip" data-v={v} aria-pressed="false">{v}</button>
+          ))}
+        </div>
+      </div>
+      <div>
+        <h3>上手难度</h3>
+        <div class="f-chips" id="f-diff">
+          {['入门', '进阶', '专业'].map((v) => (
+            <button type="button" class="f-chip" data-v={v} aria-pressed="false">{v}</button>
+          ))}
+        </div>
+      </div>
+      <div>
+        <h3>其他</h3>
+        <div class="f-chips">
+          <button type="button" class="f-chip" id="f-faceless" aria-pressed="false">无需露脸</button>
+        </div>
+      </div>
+      <div>
+        <h3>我的角色</h3>
+        <div class="f-chips" id="f-role">
+          {roles.map((r) => (
+            <button type="button" class="f-chip" data-v={r.name} aria-pressed="false">{r.emoji}{r.name}</button>
+          ))}
+        </div>
+      </div>
+      <button type="button" class="f-reset" id="f-reset">清空筛选</button>
+    </aside>
+
+    <div>
+      <p class="lib-count" id="lib-count" aria-live="polite"></p>
+      <div class="ledger" id="ledger">
+        {cards.map((c, i) => <CardEntry card={c} no={i + 1} />)}
+      </div>
+      <div class="empty" id="lib-empty" hidden>
+        <span class="kai">这个组合下还没攒出玩法</span>
+        换个筛法试试；或者你正好懂这行——<a href="/submit/">把路子投进来</a>。
+      </div>
+    </div>
+  </section>
+</Base>
+
+<script>
+  const KEY = 'fuye360.role';
+  const ledger = document.getElementById('ledger')!;
+  const entries = Array.from(ledger.querySelectorAll<HTMLElement>('.entry'));
+  const countEl = document.getElementById('lib-count')!;
+  const emptyEl = document.getElementById('lib-empty')!;
+
+  const search = document.getElementById('f-search') as HTMLInputElement;
+  const industry = document.getElementById('f-industry') as HTMLSelectElement;
+  const costBox = document.getElementById('f-cost')!;
+  const diffBox = document.getElementById('f-diff')!;
+  const facelessBtn = document.getElementById('f-faceless') as HTMLButtonElement;
+  const roleBox = document.getElementById('f-role')!;
+  const resetBtn = document.getElementById('f-reset') as HTMLButtonElement;
+
+  // 多选 chip 组：再点一次取消
+  function bindChips(box: Element) {
+    box.addEventListener('click', (e) => {
+      const btn = (e.target as HTMLElement).closest<HTMLButtonElement>('.f-chip');
+      if (!btn) return;
+      btn.setAttribute('aria-pressed', String(btn.getAttribute('aria-pressed') !== 'true'));
+      apply();
+    });
+  }
+  const pressed = (box: Element) =>
+    Array.from(box.querySelectorAll<HTMLButtonElement>('.f-chip[aria-pressed="true"]')).map(
+      (b) => b.dataset.v!,
+    );
+
+  bindChips(costBox);
+  bindChips(diffBox);
+  bindChips(roleBox);
+
+  facelessBtn.addEventListener('click', () => {
+    facelessBtn.setAttribute('aria-pressed', String(facelessBtn.getAttribute('aria-pressed') !== 'true'));
+    apply();
+  });
+  search.addEventListener('input', apply);
+  industry.addEventListener('change', apply);
+  resetBtn.addEventListener('click', () => {
+    search.value = '';
+    industry.value = '';
+    [costBox, diffBox, roleBox].forEach((b) =>
+      b.querySelectorAll('.f-chip').forEach((c) => c.setAttribute('aria-pressed', 'false')),
+    );
+    facelessBtn.setAttribute('aria-pressed', 'false');
+    localStorage.removeItem(KEY);
+    apply();
+  });
+
+  function apply() {
+    const q = search.value.trim().toLowerCase();
+    const ind = industry.value;
+    const costs = pressed(costBox);
+    const diffs = pressed(diffBox);
+    const roleSel = pressed(roleBox);
+    const noFace = facelessBtn.getAttribute('aria-pressed') === 'true';
+    if (roleSel.length) localStorage.setItem(KEY, roleSel[0]);
+
+    let visible = 0;
+    const hits: HTMLElement[] = [];
+    const rest: HTMLElement[] = [];
+    for (const el of entries) {
+      const ok =
+        (!ind || el.dataset.industry === ind) &&
+        (costs.length === 0 || costs.includes(el.dataset.cost!)) &&
+        (diffs.length === 0 || diffs.includes(el.dataset.difficulty!)) &&
+        (!noFace || el.dataset.faceless === '1') &&
+        (!q || el.dataset.search!.includes(q));
+      el.hidden = !ok;
+      if (!ok) continue;
+      visible++;
+      // 角色命中的排前头，其余压暗半透明；没选角色则维持原序
+      const hit = roleSel.length > 0 && el.dataset.audience!.split('|').some((a) => roleSel.includes(a));
+      el.style.opacity = roleSel.length > 0 && !hit ? '0.5' : '1';
+      (hit ? hits : rest).push(el);
+    }
+    for (const el of [...hits, ...rest]) ledger.appendChild(el);
+    countEl.innerHTML = `筛出 <b>${visible}</b> 张`;
+    emptyEl.hidden = visible > 0;
+  }
+
+  // 初始状态：URL 带 industry 则选中；localStorage 有角色则默认套上
+  const urlInd = new URLSearchParams(location.search).get('industry');
+  if (urlInd) industry.value = urlInd;
+  const savedRole = localStorage.getItem(KEY);
+  if (savedRole) {
+    roleBox
+      .querySelector<HTMLButtonElement>(`.f-chip[data-v="${savedRole}"]`)
+      ?.setAttribute('aria-pressed', 'true');
+  }
+  apply();
+</script>

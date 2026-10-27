@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://ynnyh.github.io/fuye360/sitemap-index.xml

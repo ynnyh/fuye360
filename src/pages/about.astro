@@ -1,0 +1,50 @@
+---
+import Base from '../layouts/Base.astro';
+import { SITE } from '../config';
+---
+
+<Base title="关于本站" description="副业360 是一个 AI 副业玩法库：360行，行行用AI。人人可投稿，人人可取用。">
+  <section class="page-head">
+    <h1>关于「{SITE.name}」</h1>
+    <p class="lede">老话说「360 行，行行出状元」。现在加半句：行行用 AI。</p>
+  </section>
+
+  <div class="prose">
+    <h2>这是干嘛的</h2>
+    <p>
+      网上讲副业的内容很多，但大多是故事：情绪拉满，步骤寥寥。这里只攒一种东西——<strong>玩法卡</strong>：
+      每张卡拆清一个行当的 AI 副业路子：谁会付钱、用什么工具、分几步开工、成本多少、能挣多少、坑在哪。
+      像菜谱，不像散文。
+    </p>
+
+    <h2>怎么玩</h2>
+    <ul>
+      <li><strong>找</strong>：按你的角色（上班族、宝妈、学生……）或行当筛选，玩法库里挑对路的。</li>
+      <li><strong>抄</strong>：每张卡带可直接复制的 Prompt 模板，照着 SOP 开工。</li>
+      <li><strong>投</strong>：你懂哪行，就拆哪行，<a href="/submit/">投稿</a>署名收录。</li>
+    </ul>
+
+    <h2>几条规矩</h2>
+    <ul>
+      <li>所有收益数字都是<strong>预估</strong>，随地区、客源、投入变化，不构成任何承诺。</li>
+      <li>不收会费、不卖课、不放私域引流。发现哪张卡夹带私货，欢迎举报。</li>
+      <li>内容以 <a href="https://creativecommons.org/licenses/by-sa/4.0/deed.zh" target="_blank" rel="noopener">CC BY-SA 4.0</a> 发布：署名转载，欢迎传播。</li>
+    </ul>
+
+    <h2>往后怎么长</h2>
+    <ul>
+      <li><strong>现在</strong>：玩法库 + 人人可投稿（GitHub 表单）。</li>
+      <li><strong>下一步</strong>：评论互动、投稿排行、玩法卡点赞。</li>
+      <li><strong>再往后</strong>：看中哪张卡，一键开成「我的副业项目」——执行清单、收支记录、复盘，做成真正的工作台。</li>
+      <li><strong>更远</strong>：玩法卡导出成 AI Agent 能直接执行的技能包，让 AI 替你把一个玩法跑通。</li>
+    </ul>
+
+    <h2>找我们</h2>
+    <p>
+      {SITE.github
+        ? <a href={SITE.github} target="_blank" rel="noopener">GitHub 仓库 ↗</a>
+        : 'GitHub 仓库（建好后在这里放链接）'}
+      ——站点本身也是开源的，欢迎提 Issue。
+    </p>
+  </div>
+</Base>
