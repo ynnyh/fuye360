@@ -1,79 +1,779 @@
 ---
-import Base from '../layouts/Base.astro';
-import Seal from '../components/Seal.astro';
-import RolePicker from '../components/RolePicker.astro';
-import CardEntry from '../components/CardEntry.astro';
-import { industries } from '../data/industries';
-import { SITE, withBase } from '../config';
+/**
+ * 副业街 —— 国风市井小游戏首页。
+ * 壳：一条剪纸/皮影风的暮色老街，十二家铺子对应十二个行当；
+ * 核：进店看「手艺秘籍」，内容就是玩法卡（数据与 /cards/ 完全同源）。
+ */
 import { getCollection } from 'astro:content';
+import { industries } from '../data/industries';
+import { shopSkins } from '../data/shops';
+import { SITE, withBase } from '../config';
+import '../styles/global.css';
 
 const cards = (await getCollection('cards')).sort(
   (a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf(),
 );
 
-const counts: Record<string, number> = {};
-for (const c of cards) counts[c.data.industry] = (counts[c.data.industry] ?? 0) + 1;
-
-const featured = cards.filter((c) => c.data.featured);
+const shops = industries.map((ind) => {
+  const list = cards.filter((c) => c.data.industry === ind.name);
+  const skin = shopSkins[ind.name];
+  return {
+    id: ind.name,
+    sign: skin.sign,
+    keeper: skin.keeper,
+    greeting: skin.greeting,
+    emoji: ind.emoji,
+    cards: list.map((c) => ({
+      id: c.id,
+      title: c.data.title,
+      summary: c.data.summary,
+      income: c.data.income,
+    })),
+  };
+});
 ---
 
-<Base>
-  <script type="application/ld+json" set:html={JSON.stringify({
-    '@context': 'https://schema.org',
-    '@type': 'WebSite',
-    name: SITE.name,
-    alternateName: 'AI副业项目库',
-    description: SITE.description,
-    inLanguage: 'zh-CN',
-  })} />
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>{SITE.title}</title>
+    <meta name="description" content={SITE.description} />
+    <meta name="keywords" content={SITE.keywords.join(',')} />
+    <link rel="canonical" href={Astro.site} />
+    <link rel="icon" type="image/svg+xml" href={withBase('/favicon.svg')} />
+    <meta name="theme-color" content="#1e1832" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content={SITE.name} />
+    <meta property="og:title" content={SITE.title} />
+    <meta property="og:description" content={SITE.description} />
+    <meta property="og:locale" content="zh_CN" />
+    <style>
+      /* ---------- 市井页专属：全屏画布 + HUD + 对话框 ---------- */
+      html, body { height: 100%; }
+      body.street-body {
+        margin: 0;
+        overflow: hidden;
+        background: #1e1832;
+        font-family: var(--font-body);
+      }
+      #street { position: fixed; inset: 0; width: 100%; height: 100%; display: block; cursor: pointer; }
 
-  <section class="hero">
-    <div class="hero-grid">
-      <div>
-        <h1 class="hero-slogan">360行，<br />行行用AI</h1>
-        <p class="hero-sub">
-          这里不聊风口，只攒「玩法卡」：每个行当怎么用 AI 接活儿、赚多少、第一步干什么，一张卡拆明白。挑个你的行当，照着开工。
-        </p>
+      .hud {
+        position: fixed; top: 0; left: 0; right: 0;
+        display: flex; align-items: center; justify-content: space-between;
+        padding: 14px 18px;
+        pointer-events: none;
+        z-index: 5;
+      }
+      .hud > * { pointer-events: auto; }
+      .hud-left { display: flex; align-items: center; gap: 12px; }
+      .hud .lit-count {
+        color: #f3dcb8; font-size: 0.9rem;
+        background: rgba(20, 14, 26, 0.55);
+        border: 1px solid rgba(243, 220, 184, 0.35);
+        border-radius: 999px; padding: 4px 14px;
+        backdrop-filter: blur(2px);
+      }
+      .hud .lit-count b { color: #ffb45c; font-weight: 700; }
+      .hud-nav { display: flex; gap: 6px; }
+      .hud-nav a {
+        color: #f3dcb8; text-decoration: none; font-size: 0.92rem;
+        background: rgba(20, 14, 26, 0.55);
+        border: 1px solid rgba(243, 220, 184, 0.35);
+        border-radius: 999px; padding: 5px 14px;
+        transition: background 0.15s;
+      }
+      .hud-nav a:hover { background: rgba(190, 59, 43, 0.8); }
+
+      .street-hint {
+        position: fixed; bottom: 18px; left: 50%; transform: translateX(-50%);
+        color: rgba(243, 220, 184, 0.85); font-size: 0.85rem;
+        background: rgba(20, 14, 26, 0.55);
+        border: 1px solid rgba(243, 220, 184, 0.25);
+        border-radius: 999px; padding: 6px 18px;
+        z-index: 5; pointer-events: none;
+        transition: opacity 0.8s;
+        white-space: nowrap;
+      }
+      .street-hint.gone { opacity: 0; }
+
+      /* ---------- 遮罩层（开场 / 进店） ---------- */
+      .veil {
+        position: fixed; inset: 0; z-index: 10;
+        background: rgba(12, 9, 18, 0.72);
+        display: grid; place-items: center;
+        padding: 20px;
+      }
+      .veil[hidden] { display: none; }
+      .paper-panel {
+        background: var(--paper);
+        color: var(--ink);
+        border: 1.5px solid var(--line-strong);
+        border-radius: 10px;
+        box-shadow: 0 18px 60px rgba(0, 0, 0, 0.5);
+        max-width: 560px; width: 100%;
+        max-height: 86vh; overflow-y: auto;
+        padding: 26px 26px 22px;
+        position: relative;
+      }
+      .intro-panel { text-align: center; }
+      .intro-title {
+        font-family: var(--font-kai); font-weight: 700;
+        font-size: 2.1rem; letter-spacing: 6px; margin: 14px 0 6px;
+      }
+      .intro-sub { color: var(--ink-soft); margin: 0 0 14px; }
+      .intro-lines { text-align: left; color: var(--ink-soft); font-size: 0.95rem; line-height: 1.9; margin: 0 0 20px; }
+      .intro-lines p { margin: 4px 0; }
+      .intro-lines b { color: var(--ink); }
+
+      .shop-head { display: flex; align-items: baseline; gap: 10px; border-bottom: 3px double var(--ink); padding-bottom: 10px; flex-wrap: wrap; }
+      .shop-sign { font-family: var(--font-kai); font-weight: 700; font-size: 1.6rem; letter-spacing: 3px; margin: 0; }
+      .shop-keeper { color: var(--pine); font-size: 0.9rem; }
+      .shop-greeting { color: var(--ink-soft); font-size: 0.95rem; line-height: 1.8; margin: 14px 0 16px; }
+      .shop-cards { display: grid; gap: 10px; }
+      .shop-card {
+        display: block; text-decoration: none; color: inherit;
+        border: 1.5px solid var(--line-strong); border-radius: 8px;
+        background: var(--paper-hi); padding: 12px 14px;
+        transition: border-color 0.15s, transform 0.15s;
+      }
+      .shop-card:hover { border-color: var(--seal); transform: translateY(-2px); }
+      .shop-card .sc-title { font-weight: 700; font-size: 1rem; margin: 0 0 3px; }
+      .shop-card:hover .sc-title { color: var(--seal-deep); }
+      .shop-card .sc-meta { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 5px; }
+      .shop-card .sc-go { color: var(--pine); font-size: 0.85rem; margin-left: auto; }
+      .panel-close {
+        position: absolute; top: 12px; right: 12px;
+        font: inherit; font-size: 0.88rem;
+        border: 1.5px solid var(--line-strong); border-radius: 999px;
+        background: var(--panel); color: var(--ink);
+        padding: 4px 14px; cursor: pointer;
+      }
+      .panel-close:hover { border-color: var(--seal); color: var(--seal); }
+      .recruit-note {
+        border: 1.5px dashed var(--line-strong); border-radius: 8px;
+        padding: 18px; text-align: center; color: var(--ink-soft); font-size: 0.95rem;
+      }
+      .recruit-note .kai { display: block; font-size: 1.2rem; color: var(--ink); margin-bottom: 6px; }
+
+      /* 无 JS / 搜索引擎可见的文字层 */
+      .street-fallback {
+        position: absolute; width: 1px; height: 1px;
+        overflow: hidden; clip-path: inset(50%); white-space: nowrap;
+      }
+      @media (max-width: 620px) {
+        .hud { padding: 10px 12px; }
+        .hud .seal { display: none; }
+        .paper-panel { padding: 20px 16px 16px; }
+      }
+    </style>
+  </head>
+  <body class="street-body">
+    <canvas id="street" aria-label="副业街：一条国风市井老街，十二家铺子对应十二个行当"></canvas>
+
+    <div class="hud">
+      <div class="hud-left">
+        <span class="seal seal--sm" aria-hidden="true"><span class="seal-big">副业</span><span class="seal-num">360</span></span>
+        <span class="lit-count" id="lit-count" aria-live="polite">已点亮 <b>0</b>/12 家</span>
       </div>
-      <div class="hero-stamp" aria-hidden="true"><Seal /></div>
+      <nav class="hud-nav" aria-label="街外入口">
+        <a href={withBase('/cards/')}>图鉴</a>
+        <a href={withBase('/submit/')}>投稿</a>
+        <a href={withBase('/about/')}>关于</a>
+      </nav>
     </div>
-  </section>
 
-  <section class="role-block" aria-label="选择你的角色">
-    <h2 class="role-title">你是哪一行？</h2>
-    <p class="role-hint">选一个身份，玩法库会替你把对路的玩法挑到前头。随时可换。</p>
-    <RolePicker showGo />
-  </section>
+    <div class="street-hint" id="street-hint">点铺子进店看秘籍 · 点街上走路</div>
 
-  <section class="wall" aria-label="行当墙">
-    <div class="sec-head"><h2>行当墙</h2><a class="sec-more" href={withBase('/cards/')}>看全部玩法</a></div>
-    <div class="wall-grid">
-      {industries.map((ind) => {
-        const n = counts[ind.name] ?? 0;
-        return (
-          <a
-            class:list={['plaque', { 'plaque--empty': n === 0 }]}
-            href={n > 0 ? withBase(`/cards/?industry=${encodeURIComponent(ind.name)}`) : withBase('/cards/')}
-            title={`${ind.name}——${ind.note}`}
-          >
-            <span class="p-name">{ind.name}</span>
-            <span class="p-emoji" aria-hidden="true">{ind.emoji}</span>
-            <span class="p-count">{n > 0 ? `${n} 张` : '征稿中'}</span>
-          </a>
-        );
-      })}
-    </div>
-    <p class="wall-note">
-      360 行是愿景，现在是{Object.values(counts).reduce((a, b) => a + b, 0)} 张卡、{Object.keys(counts).length} 个行当。你那行还没有？<a href={withBase('/submit/')}>投一张</a>。
-    </p>
-  </section>
-
-  {featured.length > 0 && (
-    <section aria-label="精选玩法">
-      <div class="sec-head"><h2>本周拆好的几招</h2><a class="sec-more" href={withBase('/cards/')}>进玩法库 →</a></div>
-      <div class="ledger">
-        {featured.slice(0, 5).map((c, i) => <CardEntry card={c} no={i + 1} />)}
+    <!-- 开场 -->
+    <div class="veil" id="intro">
+      <div class="paper-panel intro-panel">
+        <span class="seal" aria-hidden="true"><span class="seal-big">副业</span><span class="seal-num">360</span></span>
+        <h1 class="intro-title">副业街</h1>
+        <p class="intro-sub">三百六十行，行行用 AI</p>
+        <div class="intro-lines">
+          <p>这是一条市井老街，<b>十二家铺子，对应十二个行当</b>。</p>
+          <p>每家铺子里藏着几本<b>「手艺秘籍」</b>——拆清了用 AI 做副业的工具、步骤、成本和收益，照着就能开工。</p>
+          <p>点铺子进店，点街上走路。逛过一家的灯，就替你点亮一盏。</p>
+        </div>
+        <button type="button" class="btn" id="intro-go">进城</button>
       </div>
-    </section>
-  )}
-</Base>
+    </div>
+
+    <!-- 进店 -->
+    <div class="veil" id="dialog" hidden>
+      <div class="paper-panel" role="dialog" aria-modal="true" aria-labelledby="dlg-sign">
+        <button type="button" class="panel-close" id="dlg-close">出门</button>
+        <div class="shop-head">
+          <h2 class="shop-sign" id="dlg-sign"></h2>
+          <span class="shop-keeper" id="dlg-keeper"></span>
+        </div>
+        <p class="shop-greeting" id="dlg-greeting"></p>
+        <div class="shop-cards" id="dlg-cards"></div>
+      </div>
+    </div>
+
+    <!-- 无 JS 时的文字层（也是给搜索引擎看的正文） -->
+    <div class="street-fallback">
+      <h1>{SITE.name}</h1>
+      <p>{SITE.description}</p>
+      <ul>
+        {cards.map((c) => (
+          <li><a href={withBase(`/cards/${c.id}/`)}>{c.data.title}</a></li>
+        ))}
+      </ul>
+      <a href={withBase('/cards/')}>进入图鉴模式</a>
+    </div>
+
+    <script type="application/json" id="street-data" set:html={JSON.stringify(shops)} />
+  </body>
+</html>
+
+<script>
+  // ============ 副业街：剪纸暮色风横版小街 ============
+  interface ShopCard { id: string; title: string; summary: string; income: string }
+  interface Shop {
+    id: string; sign: string; keeper: string; greeting: string;
+    emoji: string; cards: ShopCard[];
+  }
+  const shops: Shop[] = JSON.parse(
+    (document.getElementById('street-data') as HTMLScriptElement).textContent ?? '[]',
+  );
+
+  const canvas = document.getElementById('street') as HTMLCanvasElement;
+  const ctx = canvas.getContext('2d')!;
+  const REDUCED = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const KAI = '"Kaiti SC","STKaiti","KaiTi",serif';
+  const SANS = '"Microsoft YaHei","PingFang SC",sans-serif';
+
+  // 客户端脚本内自算 base 前缀（服务端模板的 withBase 在这里不可用）
+  const withBase = (path: string) =>
+    `${(import.meta.env.BASE_URL ?? '').replace(/\/$/, '')}${path}`;
+
+  // ---------- 世界常量 ----------
+  const H = 720;               // 世界设计高度
+  const GROUND = 610;          // 街面
+  const SHOP_W = 360;
+  const STREET_X0 = 300;       // 第一家铺子的起点（牌坊之后）
+  const WORLD_W = STREET_X0 + shops.length * SHOP_W + 380;
+  const DOOR_OFF = SHOP_W / 2;
+
+  const world = { camX: 0, scale: 1, viewW: 0, dpr: 1 };
+  const player = { x: STREET_X0 + 40, target: STREET_X0 + 40, face: 1, bob: 0, walk: false };
+  let pendingShop: Shop | null = null;
+
+  // ---------- 确定性装饰坐标（预计算，避免每帧随机） ----------
+  let seed = 7;
+  const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  const stars = Array.from({ length: 70 }, () => ({
+    x: rnd() * WORLD_W, y: 20 + rnd() * 260, r: 0.6 + rnd() * 1.1,
+  }));
+  const stones = Array.from({ length: 220 }, () => ({
+    x: rnd() * WORLD_W, y: GROUND + 8 + rnd() * 34, w: 16 + rnd() * 22,
+  }));
+  const backHouses = Array.from({ length: Math.ceil(WORLD_W / 150) }, (_, i) => {
+    const w = 90 + rnd() * 70;
+    return { x: i * 150 + rnd() * 30, w, h: 70 + rnd() * 60 };
+  });
+
+  // ---------- 存档 ----------
+  const LIT_KEY = 'fuye360.lit';
+  const lit: Set<string> = new Set(JSON.parse(localStorage.getItem(LIT_KEY) ?? '[]'));
+  const litCount = document.getElementById('lit-count')!;
+  function refreshLit() {
+    litCount.innerHTML = `已点亮 <b>${lit.size}</b>/${shops.length} 家`;
+  }
+  refreshLit();
+
+  function resize() {
+    world.dpr = Math.min(devicePixelRatio || 1, 2);
+    canvas.width = innerWidth * world.dpr;
+    canvas.height = innerHeight * world.dpr;
+    world.scale = innerHeight / H;
+    world.viewW = innerWidth / world.scale;
+    world.camX = Math.min(world.camX, Math.max(0, WORLD_W - world.viewW));
+  }
+
+  // 每帧的世界坐标 → 设备像素
+  const px = (v: number) => v * world.scale * world.dpr;
+
+  // ---------- 绘制 ----------
+  function drawSky(camX: number, viewW: number) {
+    const right = camX + viewW + 60;
+    const sky = ctx.createLinearGradient(0, 0, 0, px(GROUND));
+    sky.addColorStop(0, '#1e1832');
+    sky.addColorStop(0.45, '#4a2b3a');
+    sky.addColorStop(0.78, '#a34e38');
+    sky.addColorStop(1, '#e2955a');
+    ctx.fillStyle = sky;
+    ctx.fillRect(px(camX - 60), 0, px(right - camX + 120), px(GROUND));
+    ctx.fillStyle = '#171310';
+    ctx.fillRect(px(camX - 60), px(GROUND), px(right - camX + 120), px(H - GROUND + 40));
+
+    for (const s of stars) {
+      if (s.x < camX - 20 || s.x > right) continue;
+      ctx.fillStyle = 'rgba(243,220,184,0.7)';
+      ctx.beginPath(); ctx.arc(px(s.x), px(s.y), px(s.r), 0, 7); ctx.fill();
+    }
+    // 月亮
+    const mx = WORLD_W * 0.82;
+    ctx.fillStyle = 'rgba(248,236,210,0.12)';
+    ctx.beginPath(); ctx.arc(px(mx), px(120), px(84), 0, 7); ctx.fill();
+    ctx.fillStyle = 'rgba(248,236,210,0.95)';
+    ctx.beginPath(); ctx.arc(px(mx), px(120), px(38), 0, 7); ctx.fill();
+  }
+
+  function drawMountain(baseY: number, amp: number, freq: number, phase: number, color: string, camX: number, viewW: number) {
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    const x0 = Math.max(0, camX - 80);
+    const x1 = camX + viewW + 80;
+    ctx.moveTo(px(x0), px(baseY));
+    for (let x = x0; x <= x1; x += 26) {
+      const y = baseY
+        - Math.abs(Math.sin((x + phase) * freq)) * amp
+        - Math.abs(Math.sin((x + phase) * freq * 2.7)) * amp * 0.35;
+      ctx.lineTo(px(x), px(y));
+    }
+    ctx.lineTo(px(x1), px(H));
+    ctx.lineTo(px(x0), px(H));
+    ctx.closePath(); ctx.fill();
+  }
+
+  function drawBackHouses(camX: number, viewW: number) {
+    ctx.fillStyle = '#261d2b';
+    for (const b of backHouses) {
+      if (b.x + b.w < camX - 40 || b.x > camX + viewW + 40) continue;
+      const y = 560 - b.h;
+      ctx.fillRect(px(b.x), px(y), px(b.w), px(b.h + 55));
+      ctx.beginPath();
+      ctx.moveTo(px(b.x - 8), px(y));
+      ctx.lineTo(px(b.x + b.w / 2), px(y - 24));
+      ctx.lineTo(px(b.x + b.w + 8), px(y));
+      ctx.closePath(); ctx.fill();
+    }
+  }
+
+  function drawStreet(camX: number, viewW: number) {
+    ctx.fillStyle = '#2c2523';
+    ctx.fillRect(px(camX - 60), px(GROUND), px(viewW + 120), px(46));
+    ctx.fillStyle = '#241e1d';
+    for (const s of stones) {
+      if (s.x < camX - 40 || s.x > camX + viewW + 40) continue;
+      ctx.beginPath();
+      ctx.ellipse(px(s.x), px(s.y), px(s.w / 2), px(6), 0, 0, 7);
+      ctx.fill();
+    }
+  }
+
+  function drawLantern(g: CanvasRenderingContext2D, x: number, y: number, on: boolean) {
+    g.strokeStyle = '#1c1418'; g.lineWidth = px(3);
+    g.beginPath(); g.moveTo(px(x), px(y - 18)); g.lineTo(px(x), px(y - 6)); g.stroke();
+    g.fillStyle = on ? '#ff9a3c' : '#6b3f33';
+    g.beginPath(); g.ellipse(px(x), px(y + 8), px(17), px(20), 0, 0, 7); g.fill();
+    g.strokeStyle = 'rgba(28,20,24,0.8)'; g.lineWidth = px(2);
+    g.beginPath(); g.ellipse(px(x), px(y + 8), px(17), px(20), 0, 0, 7); g.stroke();
+    g.fillStyle = '#1c1418';
+    g.fillRect(px(x - 8), px(y - 14), px(16), px(6));
+    g.fillRect(px(x - 6), px(y + 26), px(12), px(5));
+  }
+
+  function drawArchway() {
+    const ax = 60;
+    ctx.fillStyle = '#221820';
+    ctx.fillRect(px(ax), px(280), px(20), px(GROUND - 280));
+    ctx.fillRect(px(ax + 150), px(280), px(20), px(GROUND - 280));
+    ctx.fillRect(px(ax - 14), px(280), px(198), px(20));
+    ctx.beginPath();
+    ctx.moveTo(px(ax - 30), px(282));
+    ctx.quadraticCurveTo(px(ax + 95), px(214), px(ax + 220), px(282));
+    ctx.lineTo(px(ax + 220), px(268));
+    ctx.quadraticCurveTo(px(ax + 95), px(198), px(ax - 30), px(268));
+    ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#8f3a2e';
+    ctx.fillRect(px(ax + 60), px(296), px(52), px(124));
+    ctx.fillStyle = '#f6ecd8';
+    ctx.font = `700 ${px(26)}px ${KAI}`;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    '副业街'.split('').forEach((ch, ci) => ctx.fillText(ch, px(ax + 86), px(316 + ci * 36)));
+  }
+
+  function drawShop(shop: Shop, i: number, now: number) {
+    const sx = STREET_X0 + i * SHOP_W;
+    const on = lit.has(shop.id);
+    const alt = i % 2 === 0;
+
+    // 屋身
+    ctx.fillStyle = alt ? '#3a2b26' : '#35281f';
+    ctx.fillRect(px(sx + 6), px(300), px(SHOP_W - 12), px(GROUND - 300));
+    ctx.fillStyle = on ? 'rgba(255,170,90,0.16)' : 'rgba(255,170,90,0.05)';
+    ctx.fillRect(px(sx + 6), px(300), px(SHOP_W - 12), px(GROUND - 300));
+
+    // 屋檐
+    ctx.fillStyle = '#221820';
+    ctx.beginPath();
+    ctx.moveTo(px(sx - 26), px(312));
+    ctx.quadraticCurveTo(px(sx + SHOP_W / 2), px(224), px(sx + SHOP_W + 26), px(312));
+    ctx.lineTo(px(sx + SHOP_W + 26), px(300));
+    ctx.quadraticCurveTo(px(sx + SHOP_W + 6), px(282), px(sx + SHOP_W / 2), px(280));
+    ctx.quadraticCurveTo(px(sx + 6), px(282), px(sx - 26), px(300));
+    ctx.closePath(); ctx.fill();
+
+    // 柱
+    ctx.fillStyle = '#1c1418';
+    ctx.fillRect(px(sx + 22), px(300), px(14), px(GROUND - 300));
+    ctx.fillRect(px(sx + SHOP_W - 36), px(300), px(14), px(GROUND - 300));
+
+    // 窗
+    ctx.fillStyle = on ? '#ffca7a' : '#57402f';
+    ctx.fillRect(px(sx + 58), px(360), px(72), px(64));
+    ctx.fillRect(px(sx + SHOP_W - 130), px(360), px(72), px(64));
+    ctx.strokeStyle = '#1c1418'; ctx.lineWidth = px(5);
+    ctx.strokeRect(px(sx + 58), px(360), px(72), px(64));
+    ctx.strokeRect(px(sx + SHOP_W - 130), px(360), px(72), px(64));
+    ctx.beginPath();
+    ctx.moveTo(px(sx + 94), px(360)); ctx.lineTo(px(sx + 94), px(424));
+    ctx.moveTo(px(sx + SHOP_W - 94), px(360)); ctx.lineTo(px(sx + SHOP_W - 94), px(424));
+    ctx.stroke();
+
+    // 门
+    ctx.fillStyle = '#151011';
+    ctx.beginPath();
+    ctx.moveTo(px(sx + DOOR_OFF - 46), px(GROUND));
+    ctx.lineTo(px(sx + DOOR_OFF - 46), px(474));
+    ctx.quadraticCurveTo(px(sx + DOOR_OFF), px(446), px(sx + DOOR_OFF + 46), px(474));
+    ctx.lineTo(px(sx + DOOR_OFF + 46), px(GROUND));
+    ctx.closePath(); ctx.fill();
+
+    // 门槛 + 摊位杂物
+    ctx.fillStyle = '#1e1618';
+    ctx.fillRect(px(sx + DOOR_OFF - 54), px(GROUND - 6), px(108), px(10));
+    if (alt) {
+      ctx.fillStyle = '#4a3324';
+      ctx.fillRect(px(sx + 46), px(GROUND - 44), px(44), px(44));
+      ctx.fillStyle = '#5c4433';
+      ctx.fillRect(px(sx + 42), px(GROUND - 52), px(52), px(12));
+    } else {
+      ctx.fillStyle = '#4a3324';
+      ctx.beginPath(); ctx.ellipse(px(sx + SHOP_W - 74), px(GROUND - 20), px(30), px(20), 0, 0, 7); ctx.fill();
+      ctx.fillStyle = '#5c4433';
+      ctx.beginPath(); ctx.ellipse(px(sx + SHOP_W - 74), px(GROUND - 40), px(22), px(8), 0, 0, 7); ctx.fill();
+    }
+
+    // 酒旗（招牌）
+    const poleX = sx + SHOP_W - 52;
+    ctx.strokeStyle = '#1c1418'; ctx.lineWidth = px(6);
+    ctx.beginPath(); ctx.moveTo(px(poleX), px(316)); ctx.lineTo(px(poleX), px(232)); ctx.stroke();
+    const flutter = REDUCED ? 0 : Math.sin(now / 700 + i) * 3;
+    ctx.fillStyle = on ? '#c0392b' : '#8f3a2e';
+    ctx.fillRect(px(poleX + 2 + flutter * 0.3), px(232), px(46), px(150));
+    ctx.fillStyle = '#f6ecd8';
+    ctx.font = `700 ${px(30)}px ${KAI}`;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    shop.sign.slice(0, 4).split('').forEach((ch, ci) => {
+      ctx.fillText(ch, px(poleX + 25 + flutter * 0.3), px(260 + ci * 36));
+    });
+
+    // 灯笼
+    drawLantern(ctx, sx + 96, 330, on);
+    drawLantern(ctx, sx + SHOP_W - 128, 330, on);
+  }
+
+  function drawGate() {
+    const ex = WORLD_W - 220;
+    ctx.fillStyle = '#241a24';
+    ctx.fillRect(px(ex), px(320), px(200), px(GROUND - 320));
+    ctx.fillStyle = '#120d12';
+    ctx.beginPath();
+    ctx.moveTo(px(ex + 50), px(GROUND));
+    ctx.lineTo(px(ex + 50), px(480));
+    ctx.quadraticCurveTo(px(ex + 100), px(430), px(ex + 150), px(480));
+    ctx.lineTo(px(ex + 150), px(GROUND));
+    ctx.closePath(); ctx.fill();
+  }
+
+  function drawPerson(
+    x: number, groundY: number, scale: number, face: number,
+    phase: number, walking: boolean, sash: string, hat: boolean,
+  ) {
+    const bob = REDUCED ? 0 : (walking ? Math.abs(Math.sin(phase)) * 4 : 0) * scale;
+    const y = groundY - bob;
+    ctx.save();
+    ctx.translate(px(x), px(y));
+    ctx.scale(px(scale) * face, px(scale));
+    ctx.fillStyle = '#171116';
+    const legSwing = walking && !REDUCED ? Math.sin(phase * 2) * 6 : 0;
+    ctx.fillRect(-10 + legSwing, -26, 8, 26);
+    ctx.fillRect(2 - legSwing, -26, 8, 26);
+    ctx.fillStyle = '#241a22';
+    ctx.beginPath();
+    ctx.moveTo(-14, -26); ctx.lineTo(14, -26); ctx.lineTo(20, -74); ctx.lineTo(-20, -74);
+    ctx.closePath(); ctx.fill();
+    ctx.fillStyle = sash;
+    ctx.fillRect(-18, -56, 36, 8);
+    ctx.fillStyle = '#2e2226';
+    ctx.beginPath(); ctx.arc(0, -86, 12, 0, 7); ctx.fill();
+    ctx.beginPath(); ctx.arc(0, -100, 5, 0, 7); ctx.fill();
+    if (hat) {
+      ctx.fillStyle = '#8f6a3a';
+      ctx.beginPath();
+      ctx.moveTo(-22, -92); ctx.lineTo(0, -108); ctx.lineTo(22, -92);
+      ctx.closePath(); ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  const npcs = [0, 1, 2, 3].map((i) => ({
+    x: STREET_X0 + 160 + i * SHOP_W * 2.4,
+    dir: i % 2 === 0 ? 1 : -1,
+    speed: 26 + i * 7,
+    phase: i * 1.7,
+    sash: ['#c0392b', '#d68a2e', '#4a6b5a', '#7a4a6b'][i],
+  }));
+
+  function glow(x: number, y: number, r: number) {
+    const grad = ctx.createRadialGradient(px(x), px(y), 0, px(x), px(y), px(r));
+    grad.addColorStop(0, 'rgba(255,170,80,0.5)');
+    grad.addColorStop(1, 'rgba(255,170,80,0)');
+    ctx.fillStyle = grad;
+    ctx.fillRect(px(x - r), px(y - r), px(r * 2), px(r * 2));
+  }
+
+  function roundRectPath(x: number, y: number, w: number, h: number, r: number) {
+    ctx.beginPath();
+    ctx.moveTo(px(x + r), px(y));
+    ctx.arcTo(px(x + w), px(y), px(x + w), px(y + h), px(r));
+    ctx.arcTo(px(x + w), px(y + h), px(x), px(y + h), px(r));
+    ctx.arcTo(px(x), px(y + h), px(x), px(y), px(r));
+    ctx.arcTo(px(x), px(y), px(x + w), px(y), px(r));
+    ctx.closePath();
+  }
+
+  function bubble(x: number, y: number, text: string) {
+    ctx.font = `600 ${px(20)}px ${SANS}`;
+    const w = ctx.measureText(text).width + 34;
+    ctx.fillStyle = 'rgba(20,14,26,0.78)';
+    roundRectPath(x - w / 2, y - 26, w, 40, 10);
+    ctx.fill();
+    ctx.fillStyle = '#f3dcb8';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(text, px(x), px(y - 6));
+    ctx.beginPath();
+    ctx.moveTo(px(x - 7), px(y + 14)); ctx.lineTo(px(x + 7), px(y + 14)); ctx.lineTo(px(x), px(y + 24));
+    ctx.closePath(); ctx.fill();
+  }
+
+  function nearestShop(): Shop | null {
+    let best: Shop | null = null;
+    let bestD = 130;
+    shops.forEach((shop, i) => {
+      const d = Math.abs(player.x - (STREET_X0 + i * SHOP_W + DOOR_OFF));
+      if (d < bestD) { bestD = d; best = shop; }
+    });
+    return best;
+  }
+
+  // ---------- 对话框 ----------
+  const dialog = document.getElementById('dialog') as HTMLDivElement;
+  let dialogOpen = false;
+
+  function openDialog(shop: Shop) {
+    (document.getElementById('dlg-sign') as HTMLElement).textContent = `${shop.sign} · ${shop.id}铺`;
+    (document.getElementById('dlg-keeper') as HTMLElement).textContent = shop.keeper;
+    (document.getElementById('dlg-greeting') as HTMLElement).textContent = shop.greeting;
+    const box = document.getElementById('dlg-cards') as HTMLElement;
+    box.innerHTML = '';
+    if (shop.cards.length === 0) {
+      box.innerHTML = `
+        <div class="recruit-note">
+          <span class="kai">本铺秘籍征稿中</span>
+          你正好懂「${shop.id}」这行？拆成一本秘籍投来，署你的名，灯为你亮。
+          <p style="margin:10px 0 0;"><a class="btn btn--ghost" href="${withBase('/submit/')}">去投稿 →</a></p>
+        </div>`;
+    } else {
+      for (const c of shop.cards) {
+        const a = document.createElement('a');
+        a.className = 'shop-card';
+        a.href = withBase(`/cards/${c.id}/`);
+        a.innerHTML = `
+          <p class="sc-title">${c.title}</p>
+          <p style="margin:0;color:var(--ink-soft);font-size:.88rem;">${c.summary}</p>
+          <div class="sc-meta">
+            <span class="chip chip--money">${c.income}</span>
+            <span class="sc-go">翻阅秘籍 →</span>
+          </div>`;
+        box.appendChild(a);
+      }
+    }
+    dialog.hidden = false;
+    dialogOpen = true;
+    (document.getElementById('dlg-close') as HTMLButtonElement)?.focus();
+    document.getElementById('street-hint')?.classList.add('gone');
+    if (!lit.has(shop.id)) {
+      lit.add(shop.id);
+      localStorage.setItem(LIT_KEY, JSON.stringify([...lit]));
+      refreshLit();
+    }
+  }
+
+  function closeDialog() {
+    dialog.hidden = true;
+    dialogOpen = false;
+    pendingShop = null;
+  }
+  document.getElementById('dlg-close')?.addEventListener('click', closeDialog);
+  dialog.addEventListener('click', (e) => { if (e.target === dialog) closeDialog(); });
+
+  // ---------- 交互 ----------
+  canvas.addEventListener('pointerdown', (e) => {
+    const rect = canvas.getBoundingClientRect();
+    const wx = world.camX + (e.clientX - rect.left) / world.scale;
+    const wy = (e.clientY - rect.top) / world.scale;
+    if (dialogOpen) return;
+    if (wy > 170 && wy < GROUND + 40) {
+      const idx = Math.floor((wx - STREET_X0) / SHOP_W);
+      if (idx >= 0 && idx < shops.length && wx < STREET_X0 + shops.length * SHOP_W) {
+        pendingShop = shops[idx];
+        player.target = STREET_X0 + idx * SHOP_W + DOOR_OFF;
+        return;
+      }
+    }
+    pendingShop = null;
+    player.target = Math.max(140, Math.min(WORLD_W - 160, wx));
+  });
+
+  addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && dialogOpen) { closeDialog(); return; }
+    if (dialogOpen) return;
+    if (e.key === 'ArrowLeft' || e.key === 'a') { pendingShop = null; player.target = player.x - 200; }
+    if (e.key === 'ArrowRight' || e.key === 'd') { pendingShop = null; player.target = player.x + 200; }
+    if (e.key === 'Enter' || e.key === 'e') {
+      const near = nearestShop();
+      if (near) { try { openDialog(near as Shop); } catch (err) { console.error(err); } }
+    }
+  });
+
+  // ---------- 主循环 ----------
+  let last = performance.now();
+  let hintTimer = 0;
+
+  function frame(now: number) {
+    try {
+      tick(now);
+    } catch (err) {
+      (window as any).__streetErr = String(err && (err as Error).stack || err);
+      console.error('frame:', err);
+      return; // 循环停止，但错误已被记录
+    }
+    requestAnimationFrame(frame);
+  }
+
+  function tick(now: number) {
+    const dt = Math.min(0.05, (now - last) / 1000);
+    last = now;
+
+    // 玩家移动
+    const dx = player.target - player.x;
+    player.walk = Math.abs(dx) > 4;
+    if (player.walk) {
+      const step = Math.sign(dx) * 430 * dt;
+      player.x += Math.abs(dx) < Math.abs(step) ? dx : step;
+      player.face = Math.sign(dx) || player.face;
+      player.bob += dt * 14;
+    } else if (pendingShop) {
+      const shop = pendingShop;
+      pendingShop = null;
+      try { openDialog(shop); } catch (err) { console.error('openDialog:', err); }
+    }
+    // 行人游走
+    for (const n of npcs) {
+      if (!REDUCED) {
+        n.x += n.dir * n.speed * dt;
+        n.phase += dt * 9;
+        if (n.x < STREET_X0 - 60) n.dir = 1;
+        if (n.x > WORLD_W - 160) n.dir = -1;
+      }
+    }
+    // 相机跟随
+    const targetCam = Math.max(0, Math.min(WORLD_W - world.viewW, player.x - world.viewW * 0.42));
+    world.camX += (targetCam - world.camX) * Math.min(1, dt * 6);
+
+    // ---- 渲染 ----
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.setTransform(px(1), 0, 0, px(1), -px(world.camX), 0);
+
+    drawSky(world.camX, world.viewW);
+    drawMountain(435, 90, 0.008, 0, '#2a2038', world.camX, world.viewW);
+    drawMountain(470, 60, 0.013, 400, '#332640', world.camX, world.viewW);
+    drawBackHouses(world.camX, world.viewW);
+    drawStreet(world.camX, world.viewW);
+    drawArchway();
+    shops.forEach((shop, i) => drawShop(shop, i, now));
+    drawGate();
+
+    // 点亮店铺的光晕
+    const pulse = REDUCED ? 0.85 : Math.sin(now / 420) * 0.12 + 0.88;
+    shops.forEach((shop, i) => {
+      if (!lit.has(shop.id)) return;
+      const sx = STREET_X0 + i * SHOP_W;
+      glow(sx + 96, 338, 66 * pulse);
+      glow(sx + SHOP_W - 128, 338, 66 * pulse);
+      glow(sx + DOOR_OFF, 500, 90 * pulse);
+    });
+
+    // 檐上灯笼串
+    const sway = REDUCED ? 0 : Math.sin(now / 900) * 8;
+    for (let lx = Math.floor(world.camX / 380) * 380; lx < world.camX + world.viewW + 100; lx += 380) {
+      const ly = 90 + Math.sin(lx * 0.013 + now / 900) * sway;
+      ctx.strokeStyle = 'rgba(28,20,24,0.9)';
+      ctx.lineWidth = px(3);
+      ctx.beginPath(); ctx.moveTo(px(lx), px(0)); ctx.lineTo(px(lx), px(ly)); ctx.stroke();
+      drawLantern(ctx, lx, ly, true);
+      glow(lx, ly + 8, 44 * pulse);
+    }
+
+    // 人物
+    for (const n of npcs) drawPerson(n.x, GROUND + 30, 0.8, n.dir, n.phase, true, n.sash, false);
+    const near = nearestShop() as Shop | null;
+    drawPerson(player.x, GROUND + 34, 1, player.face, player.bob, player.walk, '#c0392b', true);
+    if (near && !dialogOpen) {
+      const sx = STREET_X0 + (shops.indexOf(near) as number) * SHOP_W + DOOR_OFF;
+      bubble(sx, 430, (near as Shop).cards.length ? '进店看秘籍' : '征稿中…');
+    }
+
+    // 暗角
+    const vg = ctx.createLinearGradient(0, px(H * 0.55), 0, px(H));
+    vg.addColorStop(0, 'rgba(10,6,14,0)');
+    vg.addColorStop(1, 'rgba(10,6,14,0.35)');
+    ctx.fillStyle = vg;
+    ctx.fillRect(px(world.camX), px(H * 0.55), px(world.viewW), px(H * 0.45));
+
+    hintTimer += dt;
+    if (hintTimer > 8) document.getElementById('street-hint')?.classList.add('gone');
+    (window as any).__dbg = { x: Math.round(player.x), t: Math.round(player.target), pend: !!pendingShop, cam: Math.round(world.camX), walk: player.walk };
+  }
+
+  // ---------- 开场 ----------
+  const intro = document.getElementById('intro') as HTMLDivElement;
+  if (localStorage.getItem('fuye360.introSeen')) intro.hidden = true;
+  document.getElementById('intro-go')?.addEventListener('click', () => {
+    intro.hidden = true;
+    localStorage.setItem('fuye360.introSeen', '1');
+  });
+
+  addEventListener('resize', resize);
+  resize();
+  requestAnimationFrame(frame);
+
+  // 调试/自动化钩子：手动步进游戏时间（对正常玩家无感知）
+  (window as any).__street = {
+    step(n = 60, dtMs = 33) {
+      for (let i = 0; i < n; i++) {
+        try { tick(last + dtMs); } catch (err) { return String(err); }
+      }
+      return 'stepped';
+    },
+  };
+</script>

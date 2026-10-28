@@ -1,12 +1,20 @@
 # 副业360（fuye360）
 
-> 360 行，行行用 AI。AI 副业玩法库：每张「玩法卡」拆清一个行当怎么用 AI 接活儿——工具链、SOP、成本、收益预估、坑，照着就能开工。
+> 360 行，行行用 AI。打开网站是一条**国风市井老街「副业街」**：十二家铺子对应十二个行当，点铺子进店翻「手艺秘籍」——每本秘籍就是一张玩法卡（AI 工具链、SOP、成本、收益预估、坑），照着就能开工。不想逛街？玩法库提供传统图鉴模式。
+
+## 玩法（首页=副业街）
+
+- 点街上任意位置走路，点铺子进店；
+- 每家铺子掌柜一段迎客词 + 几本秘籍（= 玩法卡），点卡片看完整攻略；
+- 逛过一家的铺子灯会点亮（存 localStorage），HUD 显示「已点亮 x/12 家」；
+- 还没收录秘籍的行当铺子显示「征稿中」，引导投稿；
+- 键盘 ←/→ 移动，Enter 进店，Esc 出门。
 
 ## 本地开发
 
 ```bash
 npm install
-npm run dev      # http://localhost:4321
+npm run dev      # http://localhost:4321/fuye360
 npm run build    # 产物在 dist/
 npm run preview
 ```
@@ -15,12 +23,15 @@ npm run preview
 
 ```
 src/
-  config.ts            # 全站配置：站点名/SEO/仓库链接/giscus（改这里）
+  config.ts            # 全站配置：站点名/SEO/仓库链接/giscus + withBase
   content.config.ts    # 玩法卡字段 schema（zod 校验）
   content/cards/*.md   # 玩法卡：一张卡一个 .md 文件
-  data/industries.ts   # 行当清单（首页行当墙）
-  data/roles.ts        # 角色清单（可配置的人群）
-  pages/               # 首页 / 玩法库 / 详情 / 投稿 / 关于
+  data/industries.ts   # 行当清单（街上的铺子）
+  data/roles.ts        # 角色清单（图鉴筛选用）
+  data/shops.ts        # 铺子皮肤：招牌/掌柜/迎客词
+  pages/index.astro    # 副业街（canvas 小游戏首页）
+  pages/cards/         # 图鉴列表 + 详情
+  pages/submit|about/  # 投稿 / 关于
 .github/ISSUE_TEMPLATE # 投稿表单（访客填表 → Issue）
 scripts/issue-to-card.mjs  # 审核 Issue → 生成玩法卡
 ```
